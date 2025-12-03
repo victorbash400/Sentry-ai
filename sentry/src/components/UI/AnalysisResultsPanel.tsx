@@ -9,9 +9,10 @@ interface AnalysisResultsPanelProps {
   result: AnalysisResult | null;
   isVisible?: boolean;
   onClose?: () => void;
+  onOpenInsuranceDashboard?: () => void;
 }
 
-export function AnalysisResultsPanel({ result, isVisible = true, onClose }: AnalysisResultsPanelProps) {
+export function AnalysisResultsPanel({ result, isVisible = true, onClose, onOpenInsuranceDashboard }: AnalysisResultsPanelProps) {
   const [isSourcesExpanded, setIsSourcesExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
@@ -164,6 +165,16 @@ export function AnalysisResultsPanel({ result, isVisible = true, onClose }: Anal
               ) : (
                 <div className="text-xs text-white/40 font-mono">No priority zones identified.</div>
               )}
+            </div>
+
+            {/* Insurance Dashboard Link */}
+            <div className="border-t border-white/10 pt-4 mt-4">
+              <button
+                onClick={onOpenInsuranceDashboard}
+                className="w-full rounded bg-blue-600/20 border border-blue-500/30 py-2 text-[10px] font-bold uppercase tracking-widest text-blue-300 hover:bg-blue-600/30 hover:text-blue-200 transition-colors"
+              >
+                Proceed to Insurance Dashboard
+              </button>
             </div>
           </div>
         </div>

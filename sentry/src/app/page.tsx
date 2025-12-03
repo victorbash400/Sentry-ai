@@ -7,6 +7,7 @@ import { MapView } from '@/components/Map/MapView';
 import LandingPage from '@/components/LandingPage';
 import { AnalysisProgressOverlay, type AnalysisProgress, type ProgressStep, type StepStatus } from '@/components/UI/AnalysisProgressOverlay';
 import { AnalysisResultsPanel } from '@/components/UI/AnalysisResultsPanel';
+import { InsuranceDashboard } from '@/components/InsuranceDashboard';
 import { DATE_RANGE_LIMITS, DEFAULT_ADVANCED_OPTIONS, DEFAULT_ANALYSIS_PARAMETERS, PIN_TYPE_OPTIONS, SIDEBAR_WIDTH } from '@/lib/constants';
 import { runAnalysis } from '@/lib/api';
 import type {
@@ -38,6 +39,7 @@ export default function DashboardPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
   const [showResultsPanel, setShowResultsPanel] = useState(false);
+  const [showInsuranceDashboard, setShowInsuranceDashboard] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
 
   const collapsedSidebarWidth = 72;
@@ -280,12 +282,12 @@ export default function DashboardPage() {
                 };
               });
             });
-          } else if (progressEvent.type === 'satellite_images') {
+          } else if ((progressEvent as any).type === 'satellite_images') {
             // Handle real-time satellite image updates
             flushSync(() => {
               setAnalysisProgress((current) => {
                 const base = current ?? createInitialProgressState(message || 'Extracting imagery...', progressEvent.step);
-                const satelliteImages = (progressEvent.data as any)?.satelliteImages || [];
+                const satelliteImages = (progressEvent as any).satelliteImages || [];
                 return {
                   ...base,
                   satelliteImages,
@@ -293,14 +295,14 @@ export default function DashboardPage() {
                 };
               });
             });
-          } else if (progressEvent.type === 'search_results') {
+          } else if ((progressEvent as any).type === 'search_results') {
             // Handle Perplexity search results
             flushSync(() => {
               setAnalysisProgress((current) => {
                 const base = current ?? createInitialProgressState(message || 'Searching...', progressEvent.step);
                 return {
                   ...base,
-                  searchResults: progressEvent.data as any,
+                  searchResults: (progressEvent as any).data,
                   steps: pushOrUpdateStep(base.steps, {
                     key: normalizeStepKey(progressEvent.step ?? 'web_search'),
                     message: message || 'Intelligence search complete',
@@ -390,6 +392,15 @@ export default function DashboardPage() {
     return <LandingPage onStart={() => setHasStarted(true)} />;
   }
 
+  if (showInsuranceDashboard) {
+    return (
+      <InsuranceDashboard
+        result={analysisResult}
+        onBack={() => setShowInsuranceDashboard(false)}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0f0f0f]">
       {/* Background Grid */}
@@ -468,6 +479,7 @@ export default function DashboardPage() {
           result={analysisResult}
           isVisible={showResultsPanel && !!analysisResult}
           onClose={() => setShowResultsPanel(false)}
+          onOpenInsuranceDashboard={() => setShowInsuranceDashboard(true)}
         />
       </div>
     </div>
