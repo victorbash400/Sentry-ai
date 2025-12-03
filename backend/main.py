@@ -166,15 +166,39 @@ async def analyze_risk_websocket(websocket: WebSocket):
         await websocket.send_json({'type': 'status', 'step': 'market_data', 'message': f'Fetching market volatility data for {request.parameters.cropType}...', 'progressPercent': 60})
         await asyncio.sleep(1.0)
 
-        # Generate grid and mock risk data
+        # Generate grid and extract satellite features
         cell_size_km = request.advanced.gridGranularity
         cells = gee.create_grid_cells(polygon, cell_size_km)
+        
+        # Extract satellite features (including thumbnail URLs)
+        print(f">>> Sending: satellite_extraction")
+        await websocket.send_json({'type': 'status', 'step': 'satellite_extraction', 'message': 'Extracting satellite imagery and NDVI data...', 'progressPercent': 70})
+        
+        date_start = request.parameters.dateRange['start']
+        date_end = request.parameters.dateRange['end']
+        cells_with_features = gee.extract_features_for_cells(cells, date_start, date_end)
+        
+        # Extract satellite images from first cell (they're shared across all cells)
+        satellite_images = []
+        if cells_with_features and len(cells_with_features) > 0:
+            first_cell_features = cells_with_features[0].get('features', {})
+            image_urls = first_cell_features.get('image_urls', [])
+            
+            # Transform to frontend format
+            for img_data in image_urls:
+                satellite_images.append({
+                    'url': img_data['url'],
+                    'id': img_data['id'],
+                    'timestamp': img_data.get('date')  # milliseconds since epoch
+                })
+            
+            print(f"  Extracted {len(satellite_images)} satellite images")
         
         print(f">>> Sending: risk_modeling")
         await websocket.send_json({'type': 'status', 'step': 'risk_modeling', 'message': 'Calculating composite risk scores...', 'progressPercent': 80})
         await asyncio.sleep(0.5)
 
-        # Mock Risk Calculation
+        # Mock Risk Calculation (TODO: Use real model predictions with extracted features)
         cells_with_risk = []
         for i, cell in enumerate(cells):
             # Generate deterministic pseudo-random risk based on location
@@ -258,7 +282,7 @@ async def analyze_risk_websocket(websocket: WebSocket):
                 "areaKm2": round(area_km2, 2),
             },
             "marketData": market_data,
-            "satelliteImages": []
+            "satelliteImages": satellite_images
         }
         
         print(f">>> Sending: complete")
