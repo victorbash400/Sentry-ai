@@ -52,9 +52,10 @@ export interface AnalysisProgress {
 interface AnalysisProgressOverlayProps {
   isVisible?: boolean;
   progress: AnalysisProgress | null;
+  onClose?: () => void;
 }
 
-export function AnalysisProgressOverlay({ isVisible = true, progress }: AnalysisProgressOverlayProps) {
+export function AnalysisProgressOverlay({ isVisible = true, progress, onClose }: AnalysisProgressOverlayProps) {
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const currentStep = progress?.steps.at(-1);
   const shouldShow = isVisible && !!progress;
@@ -106,19 +107,32 @@ export function AnalysisProgressOverlay({ isVisible = true, progress }: Analysis
                 </div>
               )}
             </div>
-            {typeof progress.progressPercent === 'number' && progress.status === 'running' && (
-              <div className="flex flex-col items-end space-y-1">
-                <span className="font-mono text-3xl font-bold text-white">
-                  {Math.round(progress.progressPercent)}%
-                </span>
-                <div className="h-1 w-32 overflow-hidden bg-white/10">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
-                    style={{ width: `${progress.progressPercent}%` }}
-                  />
+            <div className="flex items-start space-x-4">
+              {typeof progress.progressPercent === 'number' && progress.status === 'running' && (
+                <div className="flex flex-col items-end space-y-1">
+                  <span className="font-mono text-3xl font-bold text-white">
+                    {Math.round(progress.progressPercent)}%
+                  </span>
+                  <div className="h-1 w-32 overflow-hidden bg-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
+                      style={{ width: `${progress.progressPercent}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/60 transition-all hover:border-white/40 hover:bg-white/10 hover:text-white"
+                  aria-label="Close"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

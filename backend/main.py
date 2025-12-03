@@ -215,9 +215,18 @@ async def analyze_risk_websocket(websocket: WebSocket):
                 })
             
             print(f"  Extracted {len(satellite_images)} satellite images")
+            
+            # Send satellite images in real-time as they're extracted
+            if satellite_images:
+                await websocket.send_json({
+                    'type': 'satellite_images',
+                    'step': 'satellite_extraction',
+                    'data': {'satelliteImages': satellite_images},
+                    'progressPercent': 75
+                })
         
         print(f">>> Sending: risk_modeling")
-        await websocket.send_json({'type': 'status', 'step': 'risk_modeling', 'message': 'Calculating composite risk scores...', 'progressPercent': 80})
+        await websocket.send_json({'type': 'status', 'step': 'risk_modeling', 'message': 'Calculating composite risk scores...', 'progressPercent': 85})
         await asyncio.sleep(0.5)
 
         # Mock Risk Calculation (TODO: Use real model predictions with extracted features)

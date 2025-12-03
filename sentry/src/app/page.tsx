@@ -280,6 +280,19 @@ export default function DashboardPage() {
                 };
               });
             });
+          } else if (progressEvent.type === 'satellite_images') {
+            // Handle real-time satellite image updates
+            flushSync(() => {
+              setAnalysisProgress((current) => {
+                const base = current ?? createInitialProgressState(message || 'Extracting imagery...', progressEvent.step);
+                const satelliteImages = (progressEvent.data as any)?.satelliteImages || [];
+                return {
+                  ...base,
+                  satelliteImages,
+                  progressPercent: percent ?? base.progressPercent,
+                };
+              });
+            });
           } else if (progressEvent.type === 'search_results') {
             // Handle Perplexity search results
             flushSync(() => {
@@ -353,15 +366,12 @@ export default function DashboardPage() {
       setSelectedZoneId(result.priorities[0]?.id ?? null);
       setShowResultsPanel(true);
 
-      setTimeout(() => {
-        setAnalysisProgress(null);
-      }, 3000);
+      // Keep overlay open - user must close manually
     } catch (apiError) {
       setError(apiError instanceof Error ? apiError.message : 'Unable to complete analysis.');
       setAnalysisProgress(createTerminalProgressState('error', 'Analysis failed'));
-      setTimeout(() => {
-        setAnalysisProgress(null);
-      }, 5000);
+
+      // Keep error overlay open - user must close manually
     } finally {
       setIsLoading(false);
     }
@@ -452,6 +462,7 @@ export default function DashboardPage() {
         <AnalysisProgressOverlay
           isVisible={!!analysisProgress}
           progress={analysisProgress}
+          onClose={() => setAnalysisProgress(null)}
         />
         <AnalysisResultsPanel
           result={analysisResult}
