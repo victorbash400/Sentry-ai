@@ -1,0 +1,18 @@
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
+websockets
+pytest
+# Google Earth Engine for satellite imagery
+earthengine-api
+numpy
+
+# Machine Learning
+lightgbm
+scikit-learn
+pandas
+joblib
+
+# Astronomical calculations (moon phase)
+ephem

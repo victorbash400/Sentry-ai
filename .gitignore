@@ -1,0 +1,46 @@
+# Cursor/IDE
+.kiro
+
+# Environment variables
+.env
+.env*
+.env*.local
+*.env
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+.virtualenv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Node modules (if any in root)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Sensitive files
+*credentials*.json
+*service-account*.json
+backend/ascendant-woods-*.json
+
+# Sentry model artifacts and training data
+backend/data/training_data.csv
+backend/models/trained/*
