@@ -13,6 +13,7 @@ import asyncio
 import random
 from utils.gee_satellite import get_gee_instance
 from models.risk_model import get_model_instance
+from services.perplexity_search import get_perplexity_instance
 
 app = FastAPI(
     title="Agri-Sentry API",
@@ -163,8 +164,29 @@ async def analyze_risk_websocket(websocket: WebSocket):
         
         # Market Data
         print(f">>> Sending: market_data")
-        await websocket.send_json({'type': 'status', 'step': 'market_data', 'message': f'Fetching market volatility data for {request.parameters.cropType}...', 'progressPercent': 60})
+        await websocket.send_json({'type': 'status', 'step': 'market_data', 'message': f'Fetching market volatility data for {request.parameters.cropType}...', 'progressPercent': 50})
         await asyncio.sleep(1.0)
+        
+        # Web Search for Agricultural Intelligence
+        print(f">>> Sending: web_search")
+        await websocket.send_json({'type': 'status', 'step': 'web_search', 'message': 'Searching latest agricultural intelligence and research...', 'progressPercent': 60})
+        
+        perplexity = get_perplexity_instance()
+        search_results = perplexity.search_agricultural_intelligence(
+            crop_type=request.parameters.cropType,
+            risk_factors=request.parameters.riskFactors,
+            region="Kenya",
+            max_results=5
+        )
+        
+        # Send search results to frontend
+        await websocket.send_json({
+            'type': 'search_results',
+            'step': 'web_search',
+            'data': search_results,
+            'progressPercent': 65
+        })
+        await asyncio.sleep(0.5)
 
         # Generate grid and extract satellite features
         cell_size_km = request.advanced.gridGranularity

@@ -280,12 +280,32 @@ export default function DashboardPage() {
                 };
               });
             });
+          } else if (progressEvent.type === 'search_results') {
+            // Handle Perplexity search results
+            flushSync(() => {
+              setAnalysisProgress((current) => {
+                const base = current ?? createInitialProgressState(message || 'Searching...', progressEvent.step);
+                return {
+                  ...base,
+                  searchResults: progressEvent.data as any,
+                  steps: pushOrUpdateStep(base.steps, {
+                    key: normalizeStepKey(progressEvent.step ?? 'web_search'),
+                    message: message || 'Intelligence search complete',
+                    status: 'complete',
+                    progressPercent: percent,
+                  }),
+                };
+              });
+            });
           } else if (progressEvent.type === 'complete') {
             flushSync(() => {
               setAnalysisProgress((current) => {
                 const stepKey = normalizeStepKey(progressEvent.step ?? 'complete');
                 const base = current ?? createInitialProgressState(message || 'Analysis complete', stepKey);
                 const stats = mergeStatsFromEvent(base, progressEvent);
+
+                // Extract satellite images from the complete data
+                const satelliteImages = (progressEvent.data as any)?.satelliteImages || [];
 
                 return {
                   ...base,
@@ -294,6 +314,7 @@ export default function DashboardPage() {
                   message: message || base.message || 'Analysis complete',
                   currentStep: stepKey,
                   progressPercent: 100,
+                  satelliteImages,
                   steps: pushOrUpdateStep(base.steps, {
                     key: stepKey,
                     message: message || 'Analysis complete',
