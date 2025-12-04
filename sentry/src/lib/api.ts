@@ -34,6 +34,8 @@ export interface InsuranceAnalysisResponse {
   deductible: number;
   factors: { name: string; impact: string; value: string }[];
   context_data: Record<string, number>;
+  coverage_period?: string;
+  recommended_actions?: string[];
 }
 
 export async function runInsuranceAnalysis(data: InsuranceAnalysisRequest): Promise<InsuranceAnalysisResponse> {

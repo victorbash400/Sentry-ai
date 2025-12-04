@@ -240,13 +240,16 @@ export function InsuranceDashboard({ result, onBack }: InsuranceDashboardProps) 
                                 </div>
 
                                 <div className="space-y-5">
-                                    {metrics.factors.slice(0, 3).map((factor, i) => (
+                                    {metrics.factors.map((factor, i) => (
                                         <div key={i} className="flex items-center justify-between group hover:bg-white/[0.02] p-2 -mx-2 rounded transition-colors">
                                             <div className="flex items-center gap-3">
                                                 <svg width="16" height="16" viewBox="0 0 16 16" className="text-white/40">
                                                     {i === 0 && <path d="M8 2L10 6H14L11 9L12 13L8 10L4 13L5 9L2 6H6L8 2Z" fill="currentColor" />}
                                                     {i === 1 && <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="1.5" fill="none" />}
                                                     {i === 2 && <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" />}
+                                                    {i === 3 && <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.5" fill="none" />}
+                                                    {i === 4 && <path d="M2 8l4 4 8-8" stroke="currentColor" strokeWidth="1.5" fill="none" />}
+                                                    {i === 5 && <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" />}
                                                 </svg>
                                                 <span className="text-sm text-white/80">{factor.name}</span>
                                             </div>
@@ -380,16 +383,39 @@ export function InsuranceDashboard({ result, onBack }: InsuranceDashboardProps) 
                     {/* Stats Summary */}
                     {metrics && (
                         <div className="mt-8 pt-6 border-t border-white/[0.08]">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="rounded border border-white/[0.08] bg-white/[0.02] p-4">
                                     <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Premium</div>
-                                    <div className="text-xl font-bold text-white">${metrics.premium.toLocaleString()}</div>
+                                    <div className="text-xl font-bold text-white">KES {metrics.premium.toLocaleString()}</div>
                                 </div>
                                 <div className="rounded border border-white/[0.08] bg-white/[0.02] p-4">
                                     <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Coverage</div>
-                                    <div className="text-xl font-bold text-white">${(metrics.max_coverage / 1000000).toFixed(1)}M</div>
+                                    <div className="text-xl font-bold text-white">KES {(metrics.max_coverage / 1000000).toFixed(1)}M</div>
                                 </div>
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="rounded border border-white/[0.08] bg-white/[0.02] p-4">
+                                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Deductible</div>
+                                    <div className="text-lg font-bold text-white">KES {metrics.deductible.toLocaleString()}</div>
+                                </div>
+                                <div className="rounded border border-white/[0.08] bg-white/[0.02] p-4">
+                                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Period</div>
+                                    <div className="text-sm font-medium text-white/80">{metrics.coverage_period || '12 months'}</div>
+                                </div>
+                            </div>
+                            {metrics.recommended_actions && metrics.recommended_actions.length > 0 && (
+                                <div className="mt-4 rounded border border-[#d4af37]/20 bg-[#d4af37]/5 p-4">
+                                    <div className="text-[10px] text-[#d4af37] uppercase tracking-wider mb-3">Recommended Actions</div>
+                                    <ul className="space-y-2">
+                                        {metrics.recommended_actions.map((action, i) => (
+                                            <li key={i} className="flex items-start gap-2 text-xs text-white/70">
+                                                <span className="text-[#d4af37] mt-0.5">•</span>
+                                                <span>{action}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class GEESatellite:
@@ -178,13 +179,15 @@ class GEESatellite:
         # Calculate median composite
         median = collection.median()
         
-        # Generate thumbnail URLs for the first few images
+        # Generate thumbnail URLs for the first few images (PARALLELIZED)
         image_urls = []
         try:
             print(f"  Generating thumbnail URLs from {image_count} images...")
             image_list = collection.toList(5).getInfo()  # Get up to 5 images
             print(f"  Retrieved {len(image_list)} images for thumbnails")
-            for img_info in image_list:
+            
+            def generate_thumbnail(img_info):
+                """Helper function to generate a single thumbnail (for parallel execution)"""
                 img_id = img_info['id']
                 img = ee.Image(img_id)
                 # Generate RGB thumbnail URL
@@ -195,12 +198,27 @@ class GEESatellite:
                     'dimensions': 512,
                 }
                 thumb_url = img.getThumbURL(vis_params)
-                image_urls.append({
+                print(f"    Generated thumbnail for {img_id}")
+                return {
                     'url': thumb_url,
                     'id': img_id,
                     'date': img_info.get('properties', {}).get('system:time_start')
-                })
-                print(f"    Generated thumbnail for {img_id}")
+                }
+            
+            # Use ThreadPoolExecutor to generate thumbnails in parallel
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all thumbnail generation tasks
+                future_to_img = {executor.submit(generate_thumbnail, img_info): img_info for img_info in image_list}
+                
+                # Collect results as they complete
+                for future in as_completed(future_to_img):
+                    try:
+                        result = future.result()
+                        image_urls.append(result)
+                    except Exception as exc:
+                        img_info = future_to_img[future]
+                        print(f"    Failed to generate thumbnail for {img_info['id']}: {exc}")
+            
             print(f"  Total thumbnails generated: {len(image_urls)}")
         except Exception as e:
             print(f"  Could not generate image thumbnails: {str(e)}")

@@ -171,31 +171,61 @@ async def analyze_insurance_risk(request: InsuranceContextRequest):
         # 3. Predict
         risk_score = model.predict(features)
         
-        # Calculate policy details based on risk score
-        premium = 1000 + (risk_score * 50)
-        max_coverage = 1000000 - (risk_score * 5000)
-        deductible = 5000 + (risk_score * 100)
+        # Calculate policy details based on risk score (in Kenyan Shillings)
+        # Premium range: 50,000 - 200,000 KES
+        premium = 50000 + (risk_score * 1500)
+        # Coverage range: 500,000 - 5,000,000 KES
+        max_coverage = 5000000 - (risk_score * 45000)
+        # Deductible range: 10,000 - 50,000 KES
+        deductible = 10000 + (risk_score * 400)
         
         policy_type = 'Standard'
         if risk_score > 80: policy_type = 'Uninsurable'
         elif risk_score > 60: policy_type = 'High Risk'
         elif risk_score < 30: policy_type = 'Premium'
         
-        # Generate explanatory factors
+        # Generate explanatory factors (expanded to 6 factors)
         factors = [
             {'name': 'Agricultural Risk', 'impact': 'High' if request.agri_risk_score > 60 else 'Low', 'value': f"{request.agri_risk_score:.1f}"},
             {'name': 'Weather Volatility', 'impact': 'High' if context_data['weather_volatility'] > 0.6 else 'Low', 'value': f"{context_data['weather_volatility']:.2f}"},
-            {'name': 'Yield Stability', 'impact': 'High' if context_data['yield_stability'] < 0.4 else 'Low', 'value': f"{context_data['yield_stability']:.2f}"}
+            {'name': 'Yield Stability', 'impact': 'High' if context_data['yield_stability'] < 0.4 else 'Low', 'value': f"{context_data['yield_stability']:.2f}"},
+            {'name': 'Soil Quality', 'impact': 'High' if context_data['soil_quality'] < 0.5 else 'Low', 'value': f"{context_data['soil_quality']:.2f}"},
+            {'name': 'Market Stability', 'impact': 'High' if context_data['market_stability'] < 0.5 else 'Low', 'value': f"{context_data['market_stability']:.2f}"},
+            {'name': 'Claims History', 'impact': 'High' if context_data['claims_history_index'] > 0.6 else 'Low', 'value': f"{context_data['claims_history_index']:.2f}"}
         ]
+        
+        # Coverage period
+        coverage_period = "12 months (Annual)"
+        
+        # Recommended actions based on risk level
+        recommended_actions = []
+        if risk_score > 70:
+            recommended_actions = [
+                "Consider drought-resistant crop varieties",
+                "Implement soil conservation measures",
+                "Diversify crop portfolio to reduce risk"
+            ]
+        elif risk_score > 50:
+            recommended_actions = [
+                "Monitor weather forecasts regularly",
+                "Maintain adequate irrigation systems"
+            ]
+        else:
+            recommended_actions = [
+                "Continue current best practices",
+                "Consider expanding coverage area"
+            ]
 
         return {
             "risk_score": round(risk_score, 1),
-            "premium": round(premium, 2),
+            "premium": round(premium, 0),  # No decimals for KES
             "policy_type": policy_type,
-            "max_coverage": round(max_coverage, 2),
-            "deductible": round(deductible, 2),
+            "max_coverage": round(max_coverage, 0),  # No decimals for KES
+            "deductible": round(deductible, 0),  # No decimals for KES
             "factors": factors,
-            "context_data": context_data
+            "context_data": context_data,
+            "coverage_period": coverage_period,
+            "recommended_actions": recommended_actions
         }
     except Exception as e:
         print(f"ERROR: Insurance analysis failed: {str(e)}")
