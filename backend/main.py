@@ -11,9 +11,11 @@ from datetime import date
 import json
 import asyncio
 import random
-from utils.gee_satellite import get_gee_instance
-from models.risk_model import get_model_instance
-from services.perplexity_search import get_perplexity_instance
+from backend.utils.gee_satellite import get_gee_instance
+from backend.models.risk_model import get_model_instance
+from backend.models.insurance_model import get_insurance_model
+from backend.services.perplexity_search import get_perplexity_instance
+from backend.services.data_service import get_data_service
 
 app = FastAPI(
     title="Agri-Sentry API",
@@ -69,6 +71,23 @@ class AnalysisResponse(BaseModel):
     marketData: Optional[dict] = None
 
 
+class InsuranceContextRequest(BaseModel):
+    agri_risk_score: float
+    lat: float
+    lon: float
+    # Optional: Allow overriding specific factors if known
+    override_factors: Optional[dict] = None
+
+
+class InsuranceAnalysisResponse(BaseModel):
+    risk_score: float
+    premium: float
+    policy_type: str
+    max_coverage: float
+    deductible: float
+    factors: List[dict]
+
+
 # Routes
 @app.get("/")
 async def root():
@@ -86,11 +105,13 @@ async def health_check():
     try:
         gee = get_gee_instance()
         model = get_model_instance()
+        insurance_model = get_insurance_model()
         
         return {
             "status": "healthy",
             "database": "not_connected",
             "model": "loaded" if model.is_loaded else "not_loaded",
+            "insurance_model": "loaded" if insurance_model.is_loaded else "not_loaded",
             "satellite": "configured" if gee.authenticated else "not_configured",
             "model_version": "agri-v1"
         }
@@ -101,6 +122,84 @@ async def health_check():
             "model": "error",
             "satellite": "error"
         }
+
+
+@app.post("/api/insurance/analyze", response_model=InsuranceAnalysisResponse)
+async def analyze_insurance_risk(request: InsuranceContextRequest):
+    """
+    Analyze insurance risk based on agricultural score and location context.
+    Uses DataService to deterministically fetch/generate auxiliary data.
+    """
+    print(f"INFO: Received insurance analysis request for location ({request.lat}, {request.lon}) with agri_risk={request.agri_risk_score}")
+    
+    model = get_insurance_model()
+    data_service = get_data_service()
+    
+    # Load model if not loaded (lazy loading)
+    if not model.is_loaded:
+        model_path = "insurance_model.joblib"
+        if not model.load(model_path):
+             # Fallback to training if not found (auto-healing)
+             print("WARNING: Model not found, training new one...")
+             try:
+                 from backend.services.insurance_trainer import InsuranceModelTrainer
+                 trainer = InsuranceModelTrainer()
+                 trainer.train()
+                 trainer.save_model(model_path)
+                 # Try loading again
+                 model.load(model_path)
+             except Exception as e:
+                 print(f"ERROR: Failed to train fallback model: {e}")
+                 raise HTTPException(status_code=500, detail="Model not available and training failed")
+
+    try:
+        # 1. Get Context Data (Deterministic)
+        context_data = data_service.get_context_data(request.lat, request.lon, request.agri_risk_score)
+        
+        # Apply overrides if any
+        if request.override_factors:
+            context_data.update(request.override_factors)
+            
+        # 2. Prepare Features
+        features = {
+            'agri_risk_score': request.agri_risk_score,
+            **context_data
+        }
+        
+        print(f"INFO: Running prediction with features: {features}")
+        
+        # 3. Predict
+        risk_score = model.predict(features)
+        
+        # Calculate policy details based on risk score
+        premium = 1000 + (risk_score * 50)
+        max_coverage = 1000000 - (risk_score * 5000)
+        deductible = 5000 + (risk_score * 100)
+        
+        policy_type = 'Standard'
+        if risk_score > 80: policy_type = 'Uninsurable'
+        elif risk_score > 60: policy_type = 'High Risk'
+        elif risk_score < 30: policy_type = 'Premium'
+        
+        # Generate explanatory factors
+        factors = [
+            {'name': 'Agricultural Risk', 'impact': 'High' if request.agri_risk_score > 60 else 'Low', 'value': f"{request.agri_risk_score:.1f}"},
+            {'name': 'Weather Volatility', 'impact': 'High' if context_data['weather_volatility'] > 0.6 else 'Low', 'value': f"{context_data['weather_volatility']:.2f}"},
+            {'name': 'Yield Stability', 'impact': 'High' if context_data['yield_stability'] < 0.4 else 'Low', 'value': f"{context_data['yield_stability']:.2f}"}
+        ]
+
+        return {
+            "risk_score": round(risk_score, 1),
+            "premium": round(premium, 2),
+            "policy_type": policy_type,
+            "max_coverage": round(max_coverage, 2),
+            "deductible": round(deductible, 2),
+            "factors": factors,
+            "context_data": context_data
+        }
+    except Exception as e:
+        print(f"ERROR: Insurance analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/analyze", response_model=AnalysisResponse)
@@ -154,7 +253,7 @@ async def analyze_risk_websocket(websocket: WebSocket):
         
         # Soil Analysis
         print(f">>> Sending: soil_analysis")
-        await websocket.send_json({'type': 'status', 'step': 'soil_analysis', 'message': f'Analyzing soil moisture and composition for {request.parameters.cropType}...', 'progressPercent': 20})
+        await websocket.send_json({'type': 'status', 'step': 'soil_analysis', 'message': f'Analyzing soil moisture and composition...', 'progressPercent': 20})
         await asyncio.sleep(1.0)
         
         # Weather Forecasting
@@ -164,18 +263,48 @@ async def analyze_risk_websocket(websocket: WebSocket):
         
         # Market Data
         print(f">>> Sending: market_data")
-        await websocket.send_json({'type': 'status', 'step': 'market_data', 'message': f'Fetching market volatility data for {request.parameters.cropType}...', 'progressPercent': 50})
+        await websocket.send_json({'type': 'status', 'step': 'market_data', 'message': f'Fetching regional market volatility data...', 'progressPercent': 50})
         await asyncio.sleep(1.0)
         
         # Web Search for Agricultural Intelligence
         print(f">>> Sending: web_search")
-        await websocket.send_json({'type': 'status', 'step': 'web_search', 'message': 'Searching latest agricultural intelligence and research...', 'progressPercent': 60})
+        await websocket.send_json({'type': 'status', 'step': 'web_search', 'message': 'Searching latest climatic intelligence and research...', 'progressPercent': 60})
         
+        # Calculate centroid for search context
+        if polygon:
+            lats = [p['lat'] for p in polygon]
+            lons = [p['lng'] for p in polygon]
+            center_lat = sum(lats) / len(lats)
+            center_lon = sum(lons) / len(lons)
+            
+            # Reverse geocode to get location name
+            try:
+                from geopy.geocoders import Nominatim
+                geolocator = Nominatim(user_agent="sentry_app")
+                location = geolocator.reverse(f"{center_lat}, {center_lon}", language='en')
+                if location and location.address:
+                    # Extract relevant parts (e.g., county, state, country)
+                    address = location.raw.get('address', {})
+                    city = address.get('city') or address.get('town') or address.get('village') or address.get('county')
+                    state = address.get('state') or address.get('region')
+                    country = address.get('country')
+                    
+                    parts = [p for p in [city, state, country] if p]
+                    location_context = ", ".join(parts)
+                    print(f"  ✓ Geocoded location: {location_context}")
+                else:
+                    location_context = f"coordinates {center_lat:.4f}, {center_lon:.4f}"
+            except Exception as e:
+                print(f"  ⚠ Geocoding failed: {e}")
+                location_context = f"coordinates {center_lat:.4f}, {center_lon:.4f}"
+        else:
+            location_context = "Kenya"
+
         perplexity = get_perplexity_instance()
         search_results = perplexity.search_agricultural_intelligence(
             crop_type=request.parameters.cropType,
             risk_factors=request.parameters.riskFactors,
-            region="Kenya",
+            region=location_context,
             max_results=5
         )
         
@@ -224,7 +353,8 @@ async def analyze_risk_websocket(websocket: WebSocket):
                     'data': {'satelliteImages': satellite_images},
                     'progressPercent': 75
                 })
-        
+        # 5. Calculate Risk Score
+        # -----------------------
         print(f">>> Sending: risk_modeling")
         await websocket.send_json({'type': 'status', 'step': 'risk_modeling', 'message': 'Calculating composite risk scores...', 'progressPercent': 85})
         await asyncio.sleep(0.5)

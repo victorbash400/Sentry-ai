@@ -1,5 +1,6 @@
 import { AnalysisRequest, AnalysisResult } from "./types";
 
+const API_BASE_URL = "http://localhost:8000";
 const ANALYZE_ENDPOINT = "/api/analyze";
 const ANALYZE_WS_ENDPOINT = "ws://localhost:8000/api/analyze/ws";
 
@@ -17,6 +18,39 @@ const buildDefaultResult = (): AnalysisResult => ({
   temporal: {},
   metadata: { placeholder: true },
 });
+
+export interface InsuranceAnalysisRequest {
+  agri_risk_score: number;
+  lat: number;
+  lon: number;
+  override_factors?: Record<string, number>;
+}
+
+export interface InsuranceAnalysisResponse {
+  risk_score: number;
+  premium: number;
+  policy_type: string;
+  max_coverage: number;
+  deductible: number;
+  factors: { name: string; impact: string; value: string }[];
+  context_data: Record<string, number>;
+}
+
+export async function runInsuranceAnalysis(data: InsuranceAnalysisRequest): Promise<InsuranceAnalysisResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/insurance/analyze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error('Insurance analysis failed');
+  }
+
+  return response.json();
+}
 
 export async function runAnalysis(
   payload: AnalysisRequest,

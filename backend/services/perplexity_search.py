@@ -27,7 +27,7 @@ class PerplexitySearch:
             self.client = Perplexity(api_key=self.api_key)
             print(f"✓ Perplexity AI initialized")
         except ImportError:
-            print("⚠ Perplexity SDK not installed. Run: pip install perplexity-python")
+            print("⚠ Perplexity SDK not installed. Run: pip install perplexityai")
             self.client = None
         except Exception as e:
             print(f"✗ Failed to initialize Perplexity: {e}")
@@ -42,77 +42,56 @@ class PerplexitySearch:
     ) -> Dict:
         """
         Search for agricultural intelligence related to crop and risks
-        
-        Args:
-            crop_type: Type of crop (e.g., "Maize", "Coffee")
-            risk_factors: List of risk factors (e.g., ["Drought", "Pests"])
-            region: Geographic region
-            max_results: Maximum number of results
-            
-        Returns:
-            Dictionary with search results and citations
         """
         if not self.client:
             return self._mock_search_results(crop_type, risk_factors, region)
         
         # Build search query
-        risk_terms = ", ".join(risk_factors)
-        query = f"{crop_type} farming {risk_terms} risks {region} 2024 latest updates"
+        # Build search query - Focus on climatic forecast and general risks for the area
+        # risk_terms = ", ".join(risk_factors)        # Build specific query for the region
+        query = f"current climatic forecast {region} drought predictions crop yield outlook weather extremes 2025"
         
         try:
             print(f"  Searching: {query}")
             
-            search = self.client.search.create(
+            if not self.client:
+                raise ValueError("Perplexity client is not initialized")
+                
+            # Use Perplexity client with correct search method
+            response = self.client.search.create(
                 query=query,
-                max_results=max_results,
+                max_results=5,
                 max_tokens_per_page=1024
             )
             
-            # Transform results
             results = []
-            for result in search.results:
+            for result in response.results:
                 results.append({
                     'title': result.title,
                     'url': result.url,
-                    'snippet': result.snippet[:300] + "..." if len(result.snippet) > 300 else result.snippet,
-                    'date': getattr(result, 'date', None),
-                    'last_updated': getattr(result, 'last_updated', None)
+                    'snippet': result.snippet,
+                    'date': getattr(result, 'date', ''),
+                    'last_updated': getattr(result, 'last_updated', '')
                 })
             
-            print(f"  ✓ Found {len(results)} results")
+            print(f"  ✓ Search successful: {len(results)} results")
             
             return {
                 'query': query,
                 'results': results,
-                'id': getattr(search, 'id', None)
+                'id': getattr(response, 'id', 'unknown')
             }
             
         except Exception as e:
-            print(f"  ✗ Search failed: {e}")
-            return self._mock_search_results(crop_type, risk_factors, region)
-    
-    def _mock_search_results(self, crop_type: str, risk_factors: List[str], region: str) -> Dict:
-        """Fallback mock results when API is unavailable"""
-        return {
-            'query': f"{crop_type} farming {', '.join(risk_factors)} risks {region}",
-            'results': [
-                {
-                    'title': f'{crop_type} Farming Best Practices in {region}',
-                    'url': 'https://example.com/agriculture',
-                    'snippet': f'Latest guidelines for {crop_type.lower()} cultivation addressing {risk_factors[0].lower()} challenges...',
-                    'date': '2024-11-15',
-                    'last_updated': '2024-12-01'
-                },
-                {
-                    'title': f'Climate Resilience for {crop_type} Crops',
-                    'url': 'https://example.com/climate',
-                    'snippet': f'Strategies to mitigate {risk_factors[0].lower()} impact on {crop_type.lower()} yields...',
-                    'date': '2024-10-20',
-                    'last_updated': '2024-11-28'
-                }
-            ],
-            'id': 'mock-search-id'
-        }
+            import traceback
+            print(f"  ✗ CRITICAL SEARCH ERROR: {str(e)}")
+            print(f"  ✗ Traceback: {traceback.format_exc()}")
+            # Return empty results with error, NO MOCKS
+            return {
+                'query': query,
+                'results': [],
+                'error': str(e)
+            }
 
 
 # Singleton instance
