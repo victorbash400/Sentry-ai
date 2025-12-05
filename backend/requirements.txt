@@ -4,15 +4,17 @@ pydantic
 python-multipart
 websockets
 pytest
-# Google Earth Engine for satellite imagery
+python-dotenv
 earthengine-api
+google-auth
+requests
 numpy
-
-# Machine Learning
-lightgbm
-scikit-learn
 pandas
+scikit-learn
 joblib
-
-# Astronomical calculations (moon phase)
+geopy
+reportlab
+matplotlib
 ephem
+google-cloud-aiplatform
+google-genai

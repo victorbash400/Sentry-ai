@@ -301,24 +301,25 @@ async def analyze_risk_websocket(websocket: WebSocket):
         await websocket.send_json({'type': 'status', 'step': 'web_search', 'message': 'Searching latest climatic intelligence and research...', 'progressPercent': 60})
         
         # Calculate centroid for search context
+        location_context = "Kenya"
+        gemini_context = ""
+        
         if polygon:
             lats = [p['lat'] for p in polygon]
             lons = [p['lng'] for p in polygon]
             center_lat = sum(lats) / len(lats)
             center_lon = sum(lons) / len(lons)
             
-            # Reverse geocode to get location name
+            # 1. Reverse Geocoding
             try:
                 from geopy.geocoders import Nominatim
                 geolocator = Nominatim(user_agent="sentry_app")
                 location = geolocator.reverse(f"{center_lat}, {center_lon}", language='en')
                 if location and location.address:
-                    # Extract relevant parts (e.g., county, state, country)
                     address = location.raw.get('address', {})
                     city = address.get('city') or address.get('town') or address.get('village') or address.get('county')
                     state = address.get('state') or address.get('region')
                     country = address.get('country')
-                    
                     parts = [p for p in [city, state, country] if p]
                     location_context = ", ".join(parts)
                     print(f"  ✓ Geocoded location: {location_context}")
@@ -327,8 +328,33 @@ async def analyze_risk_websocket(websocket: WebSocket):
             except Exception as e:
                 print(f"  ⚠ Geocoding failed: {e}")
                 location_context = f"coordinates {center_lat:.4f}, {center_lon:.4f}"
-        else:
-            location_context = "Kenya"
+
+            # 2. Gemini Visual Analysis
+            try:
+                print("  Running Gemini visual analysis...")
+                from backend.services.gemini_service import GeminiService
+                
+                gemini = GeminiService()
+                
+                # Fetch satellite image from GEE
+                # Note: 'gee' instance is already initialized above
+                satellite_img_bytes = gee.get_satellite_image(polygon)
+                
+                if satellite_img_bytes:
+                    prompt = f"Analyze this satellite image of an agricultural area at {location_context}. Identify the specific crops grown (e.g. tea, coffee, maize) and the agricultural landscape features. Return a concise 1-sentence description for a search query."
+                    
+                    analysis = gemini.analyze_image_with_search(satellite_img_bytes, prompt)
+                    if analysis and 'text' in analysis:
+                        gemini_context = analysis['text'].strip()
+                        print(f"  ✓ Gemini Context: {gemini_context}")
+                        
+                        # Enhance location context with Gemini's findings
+                        location_context = f"{location_context}. {gemini_context}"
+                else:
+                    print("  ⚠ Could not fetch satellite image for Gemini analysis")
+                    
+            except Exception as e:
+                print(f"  ⚠ Gemini analysis failed: {e}")
 
         perplexity = get_perplexity_instance()
         search_results = perplexity.search_agricultural_intelligence(
@@ -492,6 +518,43 @@ async def analyze_risk_websocket(websocket: WebSocket):
         except:
             pass
 
+
+from fastapi.responses import StreamingResponse
+from backend.services.pdf_service import PDFService
+
+class PDFRequest(BaseModel):
+    farmName: str
+    lat: float
+    lon: float
+    areaKm2: float
+    cropType: str
+    risk_score: float
+    policy_type: str
+    max_coverage: float
+    deductible: float
+    premium: float
+    coverage_period: str
+    factors: List[dict]
+    recommended_actions: List[str]
+    polygon: Optional[List[dict]] = None
+
+@app.post("/api/insurance/pdf")
+async def generate_pdf(request: PDFRequest):
+    """
+    Generate a PDF report for the insurance policy.
+    """
+    try:
+        pdf_service = PDFService()
+        pdf_buffer = pdf_service.generate_insurance_report(request.dict())
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=insurance_proposal.pdf"}
+        )
+    except Exception as e:
+        print(f"ERROR: PDF generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/regions")
 async def get_regions():

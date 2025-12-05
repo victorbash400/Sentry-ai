@@ -87,7 +87,7 @@ export function AnalysisProgressOverlay({ isVisible = true, progress, onClose }:
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       {/* Main Overlay - Much Larger */}
-      <div className="pointer-events-auto relative z-10 flex h-[85vh] w-full max-w-5xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl">
+      <div className="pointer-events-auto relative z-10 flex h-[90vh] w-full max-w-7xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl">
         {/* Header */}
         <div className="absolute left-0 right-0 top-0 z-20 border-b border-white/10 bg-[#0a0a0a]/95 px-8 py-6 backdrop-blur-sm">
           <div className="flex items-start justify-between">
@@ -264,7 +264,6 @@ function StepIndicator({ status }: { status: StepStatus }) {
   if (status === 'active') {
     return (
       <div className="relative flex h-5 w-5 items-center justify-center">
-        <div className="absolute h-5 w-5 animate-ping rounded-full bg-cyan-400/30" />
         <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
       </div>
     );

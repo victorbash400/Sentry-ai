@@ -161,3 +161,36 @@ async function safeParseError(response: Response) {
   }
   return response.statusText;
 }
+
+export interface PDFRequest {
+  farmName: string;
+  lat: number;
+  lon: number;
+  areaKm2: number;
+  cropType: string;
+  risk_score: number;
+  policy_type: string;
+  max_coverage: number;
+  deductible: number;
+  premium: number;
+  coverage_period: string;
+  factors: { name: string; impact: string; value: string }[];
+  recommended_actions: string[];
+  polygon?: { lat: number; lng: number }[];
+}
+
+export async function generateInsurancePDF(data: PDFRequest): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}/api/insurance/pdf`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to generate PDF');
+  }
+
+  return response.blob();
+}

@@ -259,6 +259,55 @@ class GEESatellite:
         
         return results
 
+    def get_satellite_image(self, polygon: List[Dict[str, float]]) -> Optional[bytes]:
+        """
+        Fetch a static satellite image (RGB) for the given polygon.
+        Returns image bytes.
+        """
+        try:
+            # Create geometry
+            coords = [[p['lng'], p['lat']] for p in polygon]
+            coords.append(coords[0]) # Close polygon
+            roi = ee.Geometry.Polygon([coords])
+            
+            # Get recent cloud-free image
+            collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+                .filterBounds(roi) \
+                .filterDate(datetime.now().replace(year=datetime.now().year-1).strftime('%Y-%m-%d'), 
+                           datetime.now().strftime('%Y-%m-%d')) \
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
+                .sort('CLOUDY_PIXEL_PERCENTAGE')
+            
+            image = collection.first()
+            if not image:
+                # Fallback to mosaic if no single good image
+                image = collection.mosaic()
+            
+            # Visualization parameters
+            vis_params = {
+                'bands': ['B4', 'B3', 'B2'],
+                'min': 0,
+                'max': 3000,
+                'dimensions': 600,
+                'region': roi
+            }
+            
+            # Get URL
+            url = image.getThumbURL(vis_params)
+            
+            # Download image
+            import requests
+            response = requests.get(url)
+            if response.status_code == 200:
+                return response.content
+            else:
+                print(f"Failed to download GEE image: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"Error fetching GEE image: {e}")
+            return None
+
 
 # Singleton instance
 _gee_instance = None

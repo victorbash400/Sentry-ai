@@ -396,6 +396,7 @@ export default function DashboardPage() {
     return (
       <InsuranceDashboard
         result={analysisResult}
+        location={location}
         onBack={() => setShowInsuranceDashboard(false)}
       />
     );

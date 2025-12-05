@@ -1,16 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { AnalysisResult } from '@/lib/types';
-import { runInsuranceAnalysis, InsuranceAnalysisResponse } from '@/lib/api';
+import { AnalysisResult, LocationSelection } from '@/lib/types';
+import { runInsuranceAnalysis, InsuranceAnalysisResponse, generateInsurancePDF, PDFRequest } from '@/lib/api';
 
 interface InsuranceDashboardProps {
     result: AnalysisResult | null;
+    location: LocationSelection | null;
     onBack: () => void;
 }
 
-export function InsuranceDashboard({ result, onBack }: InsuranceDashboardProps) {
+export function InsuranceDashboard({ result, location, onBack }: InsuranceDashboardProps) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
     const [metrics, setMetrics] = useState<InsuranceAnalysisResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [analyzedLocation, setAnalyzedLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -23,8 +25,20 @@ export function InsuranceDashboard({ result, onBack }: InsuranceDashboardProps) 
 
         try {
             const baseRisk = result.summary.averageRisk || 50;
-            const lat = 38.5;
-            const lon = -98.0;
+            // Use actual location from props if available, otherwise fallback
+            let lat = 38.5;
+            let lon = -98.0;
+
+            if (location) {
+                if (location.type === 'custom' && location.polygon && location.polygon.length > 0) {
+                    // Calculate centroid
+                    lat = location.polygon.reduce((sum, p) => sum + p.lat, 0) / location.polygon.length;
+                    lon = location.polygon.reduce((sum, p) => sum + p.lng, 0) / location.polygon.length;
+                } else if (location.bounds) {
+                    lat = (location.bounds.southWest.lat + location.bounds.northEast.lat) / 2;
+                    lon = (location.bounds.southWest.lng + location.bounds.northEast.lng) / 2;
+                }
+            }
 
             const requestData = {
                 agri_risk_score: baseRisk,
@@ -40,6 +54,45 @@ export function InsuranceDashboard({ result, onBack }: InsuranceDashboardProps) 
             setError('Failed to run insurance analysis. Please try again.');
         } finally {
             setIsAnalyzing(false);
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!metrics || !analyzedLocation) return;
+
+        setIsDownloading(true);
+        try {
+            const pdfData: PDFRequest = {
+                farmName: location?.parkName || "My Farm",
+                lat: analyzedLocation.lat,
+                lon: analyzedLocation.lon,
+                areaKm2: result?.summary?.areaKm2 || 0,
+                cropType: "Mixed", // TODO: Get from params if available
+                risk_score: metrics.risk_score,
+                policy_type: metrics.policy_type,
+                max_coverage: metrics.max_coverage,
+                deductible: metrics.deductible,
+                premium: metrics.premium,
+                coverage_period: metrics.coverage_period || "12 Months",
+                factors: metrics.factors,
+                recommended_actions: metrics.recommended_actions || [],
+                polygon: location?.type === 'custom' ? location.polygon : undefined
+            };
+
+            const blob = await generateInsurancePDF(pdfData);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `insurance_proposal_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('PDF download failed:', err);
+            setError('Failed to generate PDF report.');
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -93,6 +146,31 @@ export function InsuranceDashboard({ result, onBack }: InsuranceDashboardProps) 
                             Location: {analyzedLocation.lat.toFixed(2)}°, {analyzedLocation.lon.toFixed(2)}°
                         </div>
                     )}
+
+                    {metrics && (
+                        <button
+                            onClick={handleDownloadPDF}
+                            disabled={isDownloading}
+                            className="flex items-center gap-2 rounded border border-[#d4af37]/30 bg-[#d4af37]/10 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#d4af37]/20 disabled:opacity-50 transition-all"
+                        >
+                            {isDownloading ? (
+                                <>
+                                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent" />
+                                    <span>Generating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                    <span>Download Proposal</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+
                     <div className="text-[10px] text-white/30 font-mono uppercase tracking-wider">
                         Agricultural Insurance Analytics
                     </div>

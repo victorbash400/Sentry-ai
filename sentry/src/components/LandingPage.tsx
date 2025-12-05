@@ -56,7 +56,7 @@ export default function SentryLanding({ onStart = () => { } }: SentryLandingProp
             </div>
 
             {/* --- HEADER METADATA --- */}
-            <header className="relative z-20 flex w-full items-start justify-between px-6 py-4 md:px-8 md:py-6 text-[10px] md:text-xs tracking-[0.2em] font-mono text-gray-400">
+            <header className="relative z-20 flex w-full items-start justify-between px-4 py-3 md:px-7 md:py-4 text-[10px] md:text-xs tracking-[0.2em] font-mono text-gray-400">
                 <div className="flex items-center gap-3 text-white">
                     <img src="/sentry_logo.svg" alt="Sentry Logo" className="h-8 w-8" />
                     <span className="text-lg font-bold tracking-widest">SENTRY</span>
@@ -71,33 +71,33 @@ export default function SentryLanding({ onStart = () => { } }: SentryLandingProp
             </header>
 
             {/* --- MAIN CONTENT LAYER --- */}
-            <main className="relative z-10 flex flex-1 flex-col items-center justify-center w-full px-6 py-4">
+            <main className="relative z-10 flex flex-1 flex-col items-center justify-center w-full px-3 py-4">
 
                 {/* THE ARTIFACT (Geometric Visualization) */}
-                <div className="relative w-full max-w-6xl aspect-[16/9] flex items-center justify-center">
+                <div className="relative w-full max-w-4xl aspect-[16/9] flex items-center justify-center">
 
                     {/* Centerpiece (Spire + Text) - Constrained width */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="relative w-full max-w-3xl aspect-video flex items-center justify-center">
+                        <div className="relative w-full max-w-xl aspect-[16/9] flex items-center justify-center">
                             {/* Wireframe Geometry */}
                             <WireframeSpire />
 
                             {/* Typography Overlay */}
                             <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
                                 <div className="relative z-20 mix-blend-difference text-center">
-                                    <div className="flex items-center justify-center gap-4 mb-4">
+                                    <div className="flex items-center justify-center gap-3 mb-3">
                                         <span className="text-[10px] tracking-[0.3em] font-mono text-white/60">SENTRY OS</span>
                                         <span className="h-px w-12 bg-white/40"></span>
                                         <span className="text-[10px] tracking-[0.3em] font-mono text-white/60">V.2.4.0</span>
                                     </div>
 
-                                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tighter text-white leading-[0.85]">
+                                    <h1 className="text-4xl md:text-5xl lg:text-5xl font-medium tracking-tighter text-white leading-[0.95]">
                                         SENTRY <br />
                                         <span className="font-light opacity-80">CORE</span>
                                     </h1>
 
-                                    <div className="mt-6 flex flex-col items-center gap-2">
-                                        <p className="max-w-md text-center text-xs md:text-sm leading-relaxed tracking-widest text-gray-400 font-mono uppercase">
+                                    <div className="mt-4 flex flex-col items-center gap-1.5">
+                                        <p className="max-w-md text-center text-[11px] md:text-[11px] leading-relaxed tracking-widest text-gray-400 font-mono uppercase">
                                             № 04 / Ingesting Multi-Modal <br />
                                             Agricultural Data
                                         </p>
@@ -119,10 +119,10 @@ export default function SentryLanding({ onStart = () => { } }: SentryLandingProp
                 </div>
 
                 {/* --- ACTION AREA --- */}
-                <div className="relative z-30 mt-8 md:mt-12 mb-6">
+                <div className="relative z-30 mt-4 md:mt-6 mb-3">
                     <button
                         onClick={onStart}
-                        className="group relative overflow-hidden bg-white text-black px-10 py-4 font-mono text-xs font-bold tracking-[0.2em] transition-all hover:bg-transparent hover:text-white"
+                        className="group relative overflow-hidden bg-white text-black px-7 py-3 font-mono text-[11px] font-bold tracking-[0.18em] transition-all hover:bg-transparent hover:text-white"
                     >
                         <span className="relative z-10 flex items-center gap-3">
                             INITIALIZE_SYSTEM
@@ -137,8 +137,8 @@ export default function SentryLanding({ onStart = () => { } }: SentryLandingProp
             </main>
 
             {/* --- FOOTER --- */}
-            <footer className="relative z-20 w-full px-6 py-4 md:px-8 md:py-6 border-t border-white/10 flex flex-col md:flex-row items-end md:items-center justify-between gap-4 text-[10px] tracking-[0.2em] font-mono text-gray-500">
-                <div className="flex gap-8">
+            <footer className="relative z-20 w-full px-4 py-3 md:px-7 md:py-4 border-t border-white/10 flex flex-col md:flex-row items-end md:items-center justify-between gap-2 text-[10px] tracking-[0.18em] font-mono text-gray-500">
+                <div className="flex gap-6">
                     <span>© 2025 SENTRY INC</span>
                     <span className="hidden md:inline">PRIVACY PROTOCOLS</span>
                     <span className="hidden md:inline">SYSTEM STATUS</span>
